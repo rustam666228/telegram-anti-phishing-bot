@@ -3,7 +3,9 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 TOKEN = os.getenv('TOKEN')
 PORT = int(os.environ.get('PORT', '8443'))  # порт для Render, обычно 8080 или из переменной окружения
-
+if not TOKEN:
+    raise ValueError("Переменная окружения TOKEN не задана!")
+    
 def start(update, context):
     update.message.reply_text("Привет! Отправь ссылку — я проверю её на фишинг.")
 
