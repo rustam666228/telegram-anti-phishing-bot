@@ -1,8 +1,8 @@
-
+import os
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from keep_alive import keep_alive
 
-TOKEN = '7948228973:AAFJfZGJ0mm9prjjvosR5IVNT5aHNCkOYoI'
+TOKEN = os.getenv('TOKEN')
+PORT = int(os.environ.get('PORT', '8443'))  # порт для Render, обычно 8080 или из переменной окружения
 
 def start(update, context):
     update.message.reply_text("Привет! Отправь ссылку — я проверю её на фишинг.")
@@ -15,12 +15,22 @@ def handle_message(update, context):
         update.message.reply_text("✅ Ссылка выглядит безопасной.")
 
 def main():
-    keep_alive()
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
+
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-    updater.start_polling()
+
+    # Set webhook — сюда подставь URL, который Render даст (будет https://<твой-сервис>.onrender.com)
+    WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/"  # Render задаст этот хостнейм
+
+    # Запускаем webhook
+    updater.start_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=TOKEN,
+        webhook_url=WEBHOOK_URL + TOKEN
+    )
     updater.idle()
 
 if __name__ == '__main__':
