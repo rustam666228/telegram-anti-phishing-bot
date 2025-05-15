@@ -1,11 +1,15 @@
 import os
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from flask import Flask, request
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 
-TOKEN = os.getenv('TOKEN')
-PORT = int(os.environ.get('PORT', '8443'))  # порт для Render, обычно 8080 или из переменной окружения
-if not TOKEN:
-    raise ValueError("Переменная окружения TOKEN не задана!")
-    
+app = Flask(__name__)
+
+TOKEN = os.environ.get("TOKEN")  # Токен должен быть в переменных окружения!
+bot = Bot(token=TOKEN)
+dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
+
+# === Обработчики ===
 def start(update, context):
     update.message.reply_text("Привет! Отправь ссылку — я проверю её на фишинг.")
 
@@ -16,24 +20,21 @@ def handle_message(update, context):
     else:
         update.message.reply_text("✅ Ссылка выглядит безопасной.")
 
-def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+# === Вебхук ===
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    dispatcher.process_update(update)
+    return "ok", 200
 
-    # Set webhook — сюда подставь URL, который Render даст (будет https://<твой-сервис>.onrender.com)
-    WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/"  # Render задаст этот хостнейм
+@app.route("/")
+def index():
+    return "Бот работает!", 200
 
-    # Запускаем webhook
-    updater.start_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path=TOKEN,
-        webhook_url=WEBHOOK_URL + TOKEN
-    )
-    updater.idle()
+if __name__ == "__main__":
+    PORT = int(os.environ.get('PORT', 10000))
+    app.run(host="0.0.0.0", port=PORT)
 
-if __name__ == '__main__':
-    main()
