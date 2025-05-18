@@ -25,7 +25,8 @@ def notify_owner(original_message, sender_id):
 # Ответ пользователю
 def handle_message(update, context):
     user_text = update.message.text
-    user_id = update.message.chat_id
+    sender_id = update.message.from_user.id  # ID отправителя
+    chat_id = update.message.chat_id
 
     urls = re.findall(r'https?://\S+', user_text)
     if urls:
@@ -33,7 +34,7 @@ def handle_message(update, context):
         for url in urls:
             if is_phishing_link(url):
                 update.message.reply_text("⚠️ Это может быть фишинговая ссылка!")
-                notify_owner(user_text, user_id)
+                notify_owner(user_text, sender_id)
                 flagged = True
         if not flagged:
             update.message.reply_text("✅ Ссылка выглядит безопасной.")
