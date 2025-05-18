@@ -1,13 +1,12 @@
 import os
 import re
-import requests
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, MessageHandler, Filters, CommandHandler
 
 TOKEN = os.getenv("TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
-PORT = int(os.getenv("PORT", 8080))  # Render задаёт порт через переменную PORT
+PORT = int(os.getenv("PORT", 8080))  # Render задаёт порт сюда
 
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
@@ -49,10 +48,7 @@ def webhook():
     return "ok"
 
 if __name__ == "__main__":
-    # Устанавливаем вебхук, используем переменную окружения RENDER_EXTERNAL_HOSTNAME
     webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
+    print("Webhook URL:", webhook_url)
     bot.set_webhook(url=webhook_url)
-    print(f"Webhook set to: {webhook_url}")
-
-    # Запускаем Flask на порту, который выделил Render
     app.run(host="0.0.0.0", port=PORT)
