@@ -69,7 +69,7 @@ def webhook():
     return "ok"
 
 # Запуск keep_alive (если ты его используешь для Render)
-keep_alive()
+ # keep_alive()
 
 # Установка Webhook при запуске
 if __name__ == "__main__":
