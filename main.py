@@ -4,7 +4,7 @@ import requests
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, MessageHandler, Filters, CommandHandler, CallbackContext
-from keep_alive import keep_alive
+# from keep_alive import keep_alive
 
 # Получение переменных окружения
 TOKEN = os.getenv("TOKEN")
