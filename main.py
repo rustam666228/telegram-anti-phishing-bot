@@ -104,9 +104,11 @@ def start(update: Update, context: CallbackContext):
 def handle_message(update: Update, context: CallbackContext):
     if not update.message or not update.message.text:
         return
+
     user_text = update.message.text
     sender_id = update.message.from_user.id
-urls = re.findall(r'(https?://[^\s]+|www\.[^\s]+)', user_text)
+    urls = re.findall(r'(https?://[^\s]+|www\.[^\s]+)', user_text)
+
     if urls:
         flagged = False
         for url in urls:
@@ -124,6 +126,7 @@ urls = re.findall(r'(https?://[^\s]+|www\.[^\s]+)', user_text)
                 update.message.reply_text("⚠️ This might be a phishing link!")
                 notify_owner(user_text, sender_id)
                 flagged = True
+
             log_incident(sender_id, url, bool(methods), methods)
 
         if not flagged:
