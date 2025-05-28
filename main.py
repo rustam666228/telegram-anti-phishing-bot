@@ -82,8 +82,6 @@ def check_openphish(url):
 def notify_owner(message, sender_id):
     bot.send_message(chat_id=OWNER_ID, text=f"🚨 Suspicious link from {sender_id}:\n{message}")
 
-{message}")
-
 # /start
 def start(update: Update, context: CallbackContext):
     update.message.reply_text("Hi! Send me a link and I will check if it's phishing.")
