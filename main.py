@@ -106,7 +106,7 @@ def handle_message(update: Update, context: CallbackContext):
         return
     user_text = update.message.text
     sender_id = update.message.from_user.id
-    urls = re.findall(r'https?://\\S+', user_text)
+urls = re.findall(r'(https?://[^\s]+|www\.[^\s]+)', user_text)
     if urls:
         flagged = False
         for url in urls:
