@@ -1,3 +1,4 @@
+
 import os
 import re
 import requests
@@ -9,6 +10,7 @@ from telegram.ext import Dispatcher, MessageHandler, Filters, CommandHandler, Ca
 TOKEN = os.getenv("TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
 GSB_API_KEY = os.getenv("GSB_API_KEY")
+VT_API_KEY = os.getenv("VT_API_KEY")
 PORT = int(os.getenv("PORT", 8080))
 
 bot = Bot(token=TOKEN)
@@ -47,9 +49,39 @@ def check_google_safe_browsing(url):
         print("GSB Error:", e)
         return False
 
-# Оповещение владельца
+# VirusTotal проверка
+def check_virustotal(url):
+    headers = {"x-apikey": VT_API_KEY}
+    scan_url = "https://www.virustotal.com/api/v3/urls"
+    try:
+        resp = requests.post(scan_url, headers=headers, data={"url": url})
+        if resp.status_code != 200:
+            return False
+        analysis_id = resp.json()["data"]["id"]
+        analysis_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
+        result = requests.get(analysis_url, headers=headers).json()
+        stats = result["data"]["attributes"]["stats"]
+        return stats["malicious"] > 0 or stats["suspicious"] > 0
+    except Exception as e:
+        print("VT error:", e)
+        return False
+
+# OpenPhish проверка
+def check_openphish(url):
+    try:
+        response = requests.get("https://openphish.com/feed.txt", timeout=10)
+        if response.status_code == 200:
+            phishing_urls = response.text.splitlines()
+            return any(url.strip() in entry for entry in phishing_urls)
+        return False
+    except Exception as e:
+        print("OpenPhish error:", e)
+        return False
+
+# Уведомление владельца
 def notify_owner(message, sender_id):
-    bot.send_message(chat_id=OWNER_ID, text=f"🚨 Suspicious link from {sender_id}:\n{message}")
+    bot.send_message(chat_id=OWNER_ID, text=f"🚨 Suspicious link from {sender_id}:
+{message}")
 
 # /start
 def start(update: Update, context: CallbackContext):
@@ -66,7 +98,12 @@ def handle_message(update: Update, context: CallbackContext):
     if urls:
         flagged = False
         for url in urls:
-            if is_phishing_link(url) or check_google_safe_browsing(url):
+            if (
+                is_phishing_link(url) or
+                check_google_safe_browsing(url) or
+                check_virustotal(url) or
+                check_openphish(url)
+            ):
                 update.message.reply_text("⚠️ This might be a phishing link!")
                 notify_owner(user_text, sender_id)
                 flagged = True
