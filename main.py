@@ -80,7 +80,8 @@ def check_openphish(url):
 
 # Уведомление владельца
 def notify_owner(message, sender_id):
-    bot.send_message(chat_id=OWNER_ID, text=f"🚨 Suspicious link from {sender_id}:
+    bot.send_message(chat_id=OWNER_ID, text=f"🚨 Suspicious link from {sender_id}:\n{message}")
+
 {message}")
 
 # /start
