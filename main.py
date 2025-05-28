@@ -1,6 +1,6 @@
 import os
 import re
-import json
+import csv
 import requests
 from datetime import datetime
 from flask import Flask, request
@@ -76,25 +76,25 @@ def notify_owner(message, sender_id):
 
 # Логирование в JSON
 def log_incident(sender_id, url, is_phishing, methods):
-    log_entry = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "sender_id": sender_id,
-        "url": url,
-        "result": "phishing" if is_phishing else "safe",
-        "detected_by": methods
-    }
+    # Запись в CSV
+    log_path = "phishing_dataset.csv"
+    label = "phishing" if is_phishing else "safe"
+
     try:
-        if not os.path.exists("logs.json"):
-            with open("logs.json", "w") as f:
-                json.dump([log_entry], f, indent=2)
-        else:
-            with open("logs.json", "r+") as f:
-                data = json.load(f)
-                data.append(log_entry)
-                f.seek(0)
-                json.dump(data, f, indent=2)
+        file_exists = os.path.isfile(log_path)
+        with open(log_path, "a", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            if not file_exists:
+                writer.writerow(["sender_id", "url", "label", "detected_by", "timestamp"])
+            writer.writerow([
+                sender_id,
+                url,
+                label,
+                ";".join(methods),
+                datetime.utcnow().isoformat()
+            ])
     except Exception as e:
-        print("Logging error:", e)
+        print("CSV log error:", e)
 
 # /start
 def start(update: Update, context: CallbackContext):
