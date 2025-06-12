@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+import csv
 import joblib
 from flask import Flask, request
 from telegram import Bot, Update
@@ -97,6 +98,7 @@ def notify_owner(original_message, sender_id):
 def start(update: Update, context: CallbackContext):
     update.message.reply_text("👋 Send me a link and I will check if it's phishing.")
 
+
 def handle_message(update: Update, context: CallbackContext):
     if not update.message or not update.message.text:
         return
@@ -108,16 +110,26 @@ def handle_message(update: Update, context: CallbackContext):
     if urls:
         flagged = False
         for url in urls:
-            if (
+            is_phish = (
                 is_phishing_link(url)
                 or check_google_safe_browsing(url)
                 or check_virustotal(url)
                 or check_openphish(url)
                 or check_with_model(url)
-            ):
+            )
+            # === Добавление URL и метки в CSV ===
+            try:
+                with open("phishing_dataset.csv", mode="a", newline='', encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow([url, int(is_phish)])
+            except Exception as e:
+                print("Ошибка записи в CSV:", e)
+
+            if is_phish:
                 update.message.reply_text("⚠️ This might be a phishing link!")
                 notify_owner(user_text, sender_id)
                 flagged = True
+
         if not flagged:
             update.message.reply_text("✅ The link looks safe.")
     else:
