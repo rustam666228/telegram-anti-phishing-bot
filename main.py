@@ -2,6 +2,8 @@ import os
 import re
 import pickle
 import requests
+import joblib
+clf = joblib.load("phishing_model.pkl")
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, MessageHandler, Filters, CommandHandler, CallbackContext
