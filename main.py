@@ -1,12 +1,14 @@
 import os
 import re
 import requests
+import pandas as pd
 import csv
 import joblib
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, MessageHandler, Filters, CommandHandler, CallbackContext
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
 
 # === Проверка на наличие модели ===
 MODEL_PATH = "phishing_model.pkl"
@@ -14,6 +16,20 @@ if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError("❌ Модель phishing_model.pkl не найдена. Запусти train_model.py для её создания.")
 model = joblib.load(MODEL_PATH)
 
+def retrain_model():
+    try:
+        df = pd.read_csv(DATASET_PATH)
+        X = df["url"]
+        y = df["label"]
+        vectorizer = CountVectorizer()
+        X_vec = vectorizer.fit_transform(X)
+        model = LogisticRegression()
+        model.fit(X_vec, y)
+        joblib.dump(model, "phishing_model.pkl")
+        print("✅ Модель переобучена.")
+    except Exception as e:
+        print("❌ Ошибка обучения:", e)
+        
 # Загрузка переменных окружения
 TOKEN = os.getenv("TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -21,6 +37,24 @@ GSB_API_KEY = os.getenv("GSB_API_KEY")
 VT_API_KEY = os.getenv("VT_API_KEY")
 PORT = int(os.getenv("PORT", 8080))
 
+DATASET_PATH = "phishing_dataset.csv"
+
+def save_to_dataset(url, label):
+    try:
+        if os.path.exists(DATASET_PATH):
+            df = pd.read_csv(DATASET_PATH)
+        else:
+            df = pd.DataFrame(columns=["url", "label"])
+
+        if url not in df["url"].values:
+            df.loc[len(df)] = [url, label]
+            df.to_csv(DATASET_PATH, index=False)
+            print(f"✅ URL сохранён: {url} -> {label}")
+        else:
+            print("ℹ️ URL уже в датасете.")
+    except Exception as e:
+        print("❌ Ошибка при сохранении в датасет:", e)
+        
 # Инициализация бота и Flask
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
@@ -110,30 +144,27 @@ def handle_message(update: Update, context: CallbackContext):
     if urls:
         flagged = False
         for url in urls:
-            is_phish = (
+            phishing_detected = (
                 is_phishing_link(url)
                 or check_google_safe_browsing(url)
                 or check_virustotal(url)
                 or check_openphish(url)
                 or check_with_model(url)
             )
-            # === Добавление URL и метки в CSV ===
-            try:
-                with open("phishing_dataset.csv", mode="a", newline='', encoding="utf-8") as f:
-                    writer = csv.writer(f)
-                    writer.writerow([url, int(is_phish)])
-            except Exception as e:
-                print("Ошибка записи в CSV:", e)
 
-            if is_phish:
+            if phishing_detected:
                 update.message.reply_text("⚠️ This might be a phishing link!")
                 notify_owner(user_text, sender_id)
+                save_to_dataset(url, 1)  # фишинг
                 flagged = True
+            else:
+                save_to_dataset(url, 0)  # безопасная
 
         if not flagged:
             update.message.reply_text("✅ The link looks safe.")
     else:
         update.message.reply_text("Please send a valid link.")
+
 
 # === Регистрация обработчиков ===
 
