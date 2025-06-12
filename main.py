@@ -57,8 +57,7 @@ def save_to_dataset(url, label):
 
 GITHUB_REPO = "rustam666228/telegram-anti-phishing-bot"
 GITHUB_FILE = "phishing_dataset.csv"
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") or "github_pat_..."  # ⚠️ Вставь свой токен сюда
-
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 def commit_to_github(file_path):
     try:
         print("📤 Подготовка коммита в GitHub...")
