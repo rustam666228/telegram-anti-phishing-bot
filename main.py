@@ -53,39 +53,66 @@ def save_to_dataset(url, label):
     except Exception as e:
         print("❌ Ошибка при сохранении в датасет:", e)
         
-def commit_to_github(file_path, message="📦 Автообновление датасета"):
-    token = os.getenv("GITHUB_TOKEN") or "github_pat_..."  
-    owner = "rustam666228"
-    repo = "telegram-anti-phishing-bot"
-    branch = "main"
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
+# === GitHub Commit ===
 
-    # Чтение файла и кодирование в base64
-    with open(file_path, "rb") as f:
-        content = base64.b64encode(f.read()).decode("utf-8")
+GITHUB_REPO = "rustam666228/telegram-anti-phishing-bot"
+GITHUB_FILE = "phishing_dataset.csv"
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") or "github_pat_..."  # ⚠️ Вставь свой токен сюда
 
-    # Получение SHA текущего файла (если он уже существует)
-    headers = {"Authorization": f"token {token}"}
-    response = requests.get(api_url, headers=headers)
-    sha = response.json().get("sha", None)
-
-    data = {
-        "message": message,
-        "content": content,
-        "branch": branch,
-        "committer": {
-            "name": "AntiPhishBot",
-            "email": "bot@example.com"
+def commit_to_github(file_path):
+    try:
+        print("📤 Подготовка коммита в GitHub...")
+        api_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_path}"
+        headers = {
+            "Authorization": f"token {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json"
         }
-    }
-    if sha:
-        data["sha"] = sha
 
-    commit_response = requests.put(api_url, headers=headers, data=json.dumps(data))
-    if commit_response.status_code in [200, 201]:
-        print("✅ Dataset успешно загружен в GitHub.")
-    else:
-        print("❌ Ошибка при коммите в GitHub:", commit_response.json())
+        with open(file_path, "rb") as f:
+            content = base64.b64encode(f.read()).decode("utf-8")
+
+        # Получаем SHA текущего файла
+        get_resp = requests.get(api_url, headers=headers)
+        sha = get_resp.json().get("sha")
+
+        data = {
+            "message": "🔄 Update dataset via bot",
+            "content": content,
+            "branch": "main",
+        }
+        if sha:
+            data["sha"] = sha
+
+        commit_response = requests.put(api_url, headers=headers, data=json.dumps(data))
+
+        if commit_response.status_code in [200, 201]:
+            print("✅ Изменения загружены в GitHub.")
+        else:
+            print("❌ Ошибка при коммите:", commit_response.status_code)
+            print("Ответ:", commit_response.text)
+    except Exception as e:
+        print("❌ Ошибка при коммите в GitHub:", e)
+
+# === Сохранение в CSV и GitHub ===
+
+def save_to_dataset(url, label):
+    try:
+        print("🧪 Добавление в датасет...")
+
+        if os.path.exists(DATASET_PATH):
+            df = pd.read_csv(DATASET_PATH)
+        else:
+            df = pd.DataFrame(columns=["url", "label"])
+
+        if url not in df["url"].values:
+            df.loc[len(df)] = [url, label]
+            df.to_csv(DATASET_PATH, index=False)
+            print(f"✅ URL сохранён: {url} -> {label}")
+            commit_to_github(DATASET_PATH)
+        else:
+            print("ℹ️ URL уже есть в датасете.")
+    except Exception as e:
+        print("❌ Ошибка при сохранении:", e)
         
 # === Переменные окружения ===
 TOKEN = os.getenv("TOKEN")
