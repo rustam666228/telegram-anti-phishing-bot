@@ -6,9 +6,13 @@ from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, MessageHandler, Filters, CommandHandler, CallbackContext
 from sklearn.feature_extraction.text import CountVectorizer
+
 # === Проверка на наличие модели ===
-import joblib
-model = joblib.load("phishing_model.pkl")
+MODEL_PATH = "phishing_model.pkl"
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError("❌ Модель phishing_model.pkl не найдена. Запусти train_model.py для её создания.")
+model = joblib.load(MODEL_PATH)
+
 # Загрузка переменных окружения
 TOKEN = os.getenv("TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -21,9 +25,6 @@ bot = Bot(token=TOKEN)
 app = Flask(__name__)
 dispatcher = Dispatcher(bot, None, workers=1)
 
-# Загрузка модели машинного обучения
-with open("phishing_model.pkl", "rb") as f:
-    model = pickle.load(f)
 vectorizer = CountVectorizer()
 
 # === Методы проверки ссылок ===
