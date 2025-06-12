@@ -3,11 +3,17 @@ import re
 import pickle
 import requests
 import joblib
-clf = joblib.load("phishing_model.pkl")
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, MessageHandler, Filters, CommandHandler, CallbackContext
 from sklearn.feature_extraction.text import CountVectorizer
+# === Проверка на наличие модели ===
+MODEL_PATH = "phishing_model.pkl"
+
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError("❌ Модель phishing_model.pkl не найдена. Запусти train_model.py для её создания.")
+
+clf = joblib.load(MODEL_PATH)
 
 # Загрузка переменных окружения
 TOKEN = os.getenv("TOKEN")
