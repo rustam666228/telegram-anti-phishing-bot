@@ -2,6 +2,8 @@ import os
 import re
 import requests
 import pandas as pd
+import base64
+import json
 import joblib
 from flask import Flask, request
 from telegram import Bot, Update
@@ -40,15 +42,51 @@ def save_to_dataset(url, label):
             df = pd.read_csv(DATASET_PATH)
         else:
             df = pd.DataFrame(columns=["url", "label"])
+
         if url not in df["url"].values:
             df.loc[len(df)] = [url, label]
             df.to_csv(DATASET_PATH, index=False)
             print(f"✅ URL сохранён: {url} -> {label}")
+            commit_to_github(DATASET_PATH)  # <--- вот здесь
         else:
             print("ℹ️ URL уже в датасете.")
     except Exception as e:
         print("❌ Ошибка при сохранении в датасет:", e)
+        
+def commit_to_github(file_path, message="📦 Автообновление датасета"):
+    token = os.getenv("GITHUB_TOKEN") or "github_pat_..."  
+    owner = "rustam666228"
+    repo = "telegram-anti-phishing-bot"
+    branch = "main"
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
 
+    # Чтение файла и кодирование в base64
+    with open(file_path, "rb") as f:
+        content = base64.b64encode(f.read()).decode("utf-8")
+
+    # Получение SHA текущего файла (если он уже существует)
+    headers = {"Authorization": f"token {token}"}
+    response = requests.get(api_url, headers=headers)
+    sha = response.json().get("sha", None)
+
+    data = {
+        "message": message,
+        "content": content,
+        "branch": branch,
+        "committer": {
+            "name": "AntiPhishBot",
+            "email": "bot@example.com"
+        }
+    }
+    if sha:
+        data["sha"] = sha
+
+    commit_response = requests.put(api_url, headers=headers, data=json.dumps(data))
+    if commit_response.status_code in [200, 201]:
+        print("✅ Dataset успешно загружен в GitHub.")
+    else:
+        print("❌ Ошибка при коммите в GitHub:", commit_response.json())
+        
 # === Переменные окружения ===
 TOKEN = os.getenv("TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
